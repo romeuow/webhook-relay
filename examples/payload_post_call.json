@@ -1,0 +1,32 @@
+{
+  "event_id": "evt_voice_0001",
+  "event_type": "post_call",
+  "occurred_at": "2026-01-15T14:32:10Z",
+  "call": {
+    "call_id": "call_abc123",
+    "direction": "inbound",
+    "from_number": "+5511900000000",
+    "to_number": "+5511000000000",
+    "started_at": "2026-01-15T14:27:40Z",
+    "duration_seconds": 270,
+    "status": "completed"
+  },
+  "customer": {
+    "name": "Ana Exemplo",
+    "phone": "+5511900000000",
+    "email": "ana.exemplo@example.com",
+    "document": "000.000.000-00"
+  },
+  "transcript": [
+    {"role": "agent", "text": "Olá, aqui é a assistente virtual. Como posso ajudar?", "offset": 0.0},
+    {"role": "customer", "text": "Quero a segunda via da minha fatura.", "offset": 4.2},
+    {"role": "agent", "text": "Claro, enviei o link por SMS.", "offset": 9.8}
+  ],
+  "summary": "Cliente solicitou segunda via da fatura; link enviado por SMS.",
+  "recording": {
+    "url": "https://cdn.voiceprovider.example.com/recordings/call_abc123.mp3",
+    "content_type": "audio/mpeg",
+    "expires_at": "2026-01-15T15:32:10Z"
+  },
+  "metadata": {"agent_id": "agent_demo", "language": "pt-BR"}
+}

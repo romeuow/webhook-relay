@@ -1,0 +1,23 @@
+{
+  "event_id": "evt_chat_0001",
+  "event_type": "message.received",
+  "occurred_at": "2026-01-15T16:05:00Z",
+  "conversation_id": "conv_xyz789",
+  "channel": "whatsapp",
+  "sender": {
+    "name": "Bruno Exemplo",
+    "phone": "+5511900000001",
+    "email": "bruno.exemplo@example.com"
+  },
+  "message": {
+    "message_id": "msg_001",
+    "text": "Boa tarde, gostaria de saber o status da minha solicitação.",
+    "attachments": [
+      {
+        "url": "https://cdn.chatprovider.example.com/media/msg_001/audio.ogg",
+        "content_type": "audio/ogg",
+        "filename": "voice-note.ogg"
+      }
+    ]
+  }
+}
