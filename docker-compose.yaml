@@ -1,0 +1,80 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_ENV: ${APP_ENV:-demo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      VOICE_WEBHOOK_SECRET: ${VOICE_WEBHOOK_SECRET:-demo-voice-secret}
+      CHAT_WEBHOOK_SECRET: ${CHAT_WEBHOOK_SECRET:-demo-chat-secret}
+      CRM_BACKEND: ${CRM_BACKEND:-fake}
+      CRM_BASE_URL: ${CRM_BASE_URL:-http://crm:9999}
+      CRM_API_TOKEN: ${CRM_API_TOKEN:-change-me}
+      IDEMPOTENCY_BACKEND: redis
+      REDIS_URL: redis://redis:6379/0
+      BLOB_BACKEND: s3
+      S3_BUCKET: ${S3_BUCKET:-webhook-relay-recordings}
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=2).status == 200 else 1)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-webhook-relay-recordings}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&
+      mc mb --ignore-existing local/\"$$S3_BUCKET\" &&
+      echo bucket ready: $$S3_BUCKET"
+
+volumes:
+  minio-data:
