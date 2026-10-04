@@ -23,6 +23,7 @@ def make_args(**overrides: object) -> argparse.Namespace:
         "random_event_id": False,
         "skew": 0,
         "tamper": False,
+        "local_media": False,
     }
     base.update(overrides)
     return argparse.Namespace(**base)
@@ -89,3 +90,14 @@ def test_main_returns_1_on_connection_error(capsys: pytest.CaptureFixture[str]) 
     )
     assert script.main(["--url", "http://relay.example.com"]) == 1
     assert "request failed" in capsys.readouterr().err
+
+
+def test_local_media_rewrites_urls_to_relay() -> None:
+    _, body, _ = script.build_request(make_args(local_media=True))
+    recording = json.loads(body)["recording"]
+    assert recording["url"] == "http://relay.example.com/demo/media/call_abc123.wav"
+    assert recording["content_type"] == "audio/wav"
+
+    _, body, _ = script.build_request(make_args(provider="chat", local_media=True))
+    attachment = json.loads(body)["message"]["attachments"][0]
+    assert attachment["url"] == "http://relay.example.com/demo/media/msg_001-0.wav"

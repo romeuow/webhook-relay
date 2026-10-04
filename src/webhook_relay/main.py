@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from webhook_relay import __version__
+from webhook_relay.api.demo import router as demo_router
 from webhook_relay.api.health import router as health_router
 from webhook_relay.api.middleware import RequestContextMiddleware
 from webhook_relay.api.webhooks import router as webhooks_router
@@ -45,6 +46,8 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     app.add_middleware(RequestContextMiddleware)
     app.include_router(health_router)
     app.include_router(webhooks_router)
+    if settings.app_env == "demo":
+        app.include_router(demo_router)
     return app
 
 

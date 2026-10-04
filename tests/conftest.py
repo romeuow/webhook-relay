@@ -71,7 +71,7 @@ def settings(blob_dir: Path) -> Settings:
         chat_webhook_secret=CHAT_SECRET,
         local_blob_dir=str(blob_dir),
         media_max_bytes=1024 * 1024,
-        media_allowed_content_types="audio/mpeg,audio/ogg",
+        media_allowed_content_types="audio/mpeg,audio/ogg,audio/wav",
     )
 
 

@@ -185,3 +185,31 @@ def test_request_id_is_propagated(client: TestClient, voice_example: bytes) -> N
     headers = {**sign_headers(VOICE_SECRET, voice_example), "X-Request-ID": "req-from-provider"}
     response = client.post(VOICE_PATH, content=voice_example, headers=headers)
     assert response.headers["X-Request-ID"] == "req-from-provider"
+
+
+def test_demo_media_is_downloaded_and_stored_end_to_end(
+    client: TestClient,
+    voice_example: bytes,
+    media_router: respx.MockRouter,
+    storage: LocalBlobStorage,
+) -> None:
+    """Full demo path: the relay fetches the recording from its own /demo/media endpoint."""
+    from webhook_relay.api.demo import synthetic_wav
+
+    media_router.get("http://relay.example.com/demo/media/call_abc123.wav").mock(
+        return_value=httpx.Response(
+            200, content=synthetic_wav(), headers={"content-type": "audio/wav"}
+        )
+    )
+    data = json.loads(voice_example)
+    data["recording"]["url"] = "http://relay.example.com/demo/media/call_abc123.wav"
+    data["recording"]["content_type"] = "audio/wav"
+    body = json.dumps(data).encode()
+    response = client.post(VOICE_PATH, content=body, headers=sign_headers(VOICE_SECRET, body))
+    assert response.status_code == 202
+    payload = response.json()
+    assert len(payload["attachments"]) == 1
+    assert payload["attachments"][0]["content_type"] == "audio/wav"
+    assert payload["attachments"][0]["key"].endswith(".wav")
+    stored = storage.root / payload["attachments"][0]["key"]
+    assert stored.read_bytes().startswith(b"RIFF")

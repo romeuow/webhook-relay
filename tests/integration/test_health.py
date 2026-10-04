@@ -64,3 +64,17 @@ def test_container_selects_production_adapters_without_connecting(settings: Sett
     assert type(container.idempotency_store).__name__ == "RedisIdempotencyStore"
     assert type(container.blob_storage).__name__ == "S3BlobStorage"
     container.close()
+
+
+def test_demo_media_endpoint_serves_wav_only_in_demo(
+    client: TestClient, settings: Settings
+) -> None:
+    response = client.get("/demo/media/call_abc123.wav")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "audio/wav"
+    assert response.content.startswith(b"RIFF")
+    assert client.get("/demo/media/evil.exe").status_code == 404
+
+    prod = create_app(settings.model_copy(update={"app_env": "production"}))
+    with TestClient(prod) as prod_client:
+        assert prod_client.get("/demo/media/call_abc123.wav").status_code == 404

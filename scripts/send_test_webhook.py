@@ -6,6 +6,7 @@ Usage::
     uv run python scripts/send_test_webhook.py --provider chat --event-id evt_chat_0042
     uv run python scripts/send_test_webhook.py --provider voice --skew -900   # expired signature
     uv run python scripts/send_test_webhook.py --provider voice --tamper      # body != signature
+    uv run python scripts/send_test_webhook.py --provider voice --local-media  # store a real blob
 
 Secrets default to the demo values; override with ``--secret`` or the
 ``VOICE_WEBHOOK_SECRET`` / ``CHAT_WEBHOOK_SECRET`` environment variables.
@@ -55,6 +56,9 @@ def build_request(args: argparse.Namespace) -> tuple[str, bytes, dict[str, str]]
     elif args.random_event_id:
         payload["event_id"] = f"evt_{uuid.uuid4().hex[:12]}"
 
+    if args.local_media:
+        _point_media_to_relay(payload, args.url.rstrip("/"))
+
     raw_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     secret = args.secret or os.environ.get(spec["secret_env"]) or spec["default_secret"]
     signature = build_signature_header(secret, raw_body, timestamp=int(time.time()) + args.skew)
@@ -69,6 +73,16 @@ def build_request(args: argparse.Namespace) -> tuple[str, bytes, dict[str, str]]
     return args.url.rstrip("/") + spec["path"], raw_body, headers
 
 
+def _point_media_to_relay(payload: dict, base_url: str) -> None:
+    """Rewrite provider media URLs to the relay's demo CDN (``/demo/media/*.wav``)."""
+    if payload.get("recording"):
+        payload["recording"]["url"] = f"{base_url}/demo/media/{payload['call']['call_id']}.wav"
+        payload["recording"]["content_type"] = "audio/wav"
+    for index, attachment in enumerate(payload.get("message", {}).get("attachments", [])):
+        attachment["url"] = f"{base_url}/demo/media/{payload['message']['message_id']}-{index}.wav"
+        attachment["content_type"] = "audio/wav"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -81,6 +95,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--random-event-id", action="store_true", help="generate a fresh event_id")
     parser.add_argument("--skew", type=int, default=0, help="seconds added to the signed timestamp")
     parser.add_argument("--tamper", action="store_true", help="modify the body after signing")
+    parser.add_argument(
+        "--local-media",
+        action="store_true",
+        help="point recording/attachment URLs to the relay's /demo/media endpoint",
+    )
     args = parser.parse_args(argv)
 
     url, body, headers = build_request(args)
